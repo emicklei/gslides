@@ -37,6 +37,14 @@ func newApp() *cli.App {
 					},
 					ArgsUsage: `export thumbnails`,
 				},
+				{
+					Name:  "notes",
+					Usage: "Export a TXT file with notes per slide",
+					Action: func(c *cli.Context) error {
+						return cmdExportNotes(c)
+					},
+					ArgsUsage: `export notes`,
+				},
 			},
 		},
 	}

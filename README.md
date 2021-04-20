@@ -1,4 +1,4 @@
-# gslides
+# gslides - tool to work with the Google Slides API
 
 ## requirements
 
@@ -8,3 +8,7 @@
 ## usage
 
     gslides export thumbnails 1EA.......C6Vuc
+
+    gslides export notes 1EA.......C6Vuc
+
+&copy; 2021+, ernestmicklei.com. MIT License. Contributions welcome.
