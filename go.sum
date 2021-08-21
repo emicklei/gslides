@@ -57,6 +57,7 @@ github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d h1:U+s90UTSY
 github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d/go.mod h1:maD7wRr/U5Z6m/iR4s+kqSMx2CaBsrgA7czyZG/E6dU=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/emicklei/tre v1.2.0 h1:RBwuH30DDlaDGBXsoRbHAf20Q6ZN3F/UgAbtaiupRuE=
 github.com/emicklei/tre v1.2.0/go.mod h1:sjoUs9HVn5hfWdb6j2rv71rEQlfM2e/WPeEV4d99+38=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
@@ -166,6 +167,8 @@ github.com/shurcooL/sanitized_anchor_name v1.0.0 h1:PdmoCO6wvbs+7yrJyMORt4/BmY5I
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/skinass/go-spew v1.1.1 h1:AthyEvj5Lsr2CvH437xemlydm/W/2c6HRxCqdfc5AOc=
 github.com/skinass/go-spew v1.1.1/go.mod h1:NbaiXpgBTQ6o6g+cflqYQkLYxeivXZxtFkrA3td3JdA=
+github.com/skinass/go-spew v1.1.2-0.20201126083825-2436ba95ac13 h1:wrl9wgCB+SDaRFjoxunhIfrKERDX1KfHCMUjig+VmeU=
+github.com/skinass/go-spew v1.1.2-0.20201126083825-2436ba95ac13/go.mod h1:aAPeLbwbPjWGS5hysgukgim/Eag3MNoXF7ymmAUcFnk=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=

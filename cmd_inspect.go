@@ -10,8 +10,8 @@ import (
 
 // go run *.go -v inspect 1q9VqtPPwyGre9-o3uzlu_u7AEJh-jVFlkB02wJfi4EA 13
 func cmdInspect(c *cli.Context) error {
-	//spew.Config.DisableNilValues = true
-	//spew.Config.DisableZeroValues = true
+	spew.Config.DisableNilValues = true
+	spew.Config.DisableZeroValues = true
 	srv, _ := getSlidesClient()
 	presentationTarget, err := srv.Presentations.Get(c.Args()[0]).Do()
 	if err != nil {
