@@ -61,6 +61,14 @@ func newApp() *cli.App {
 			},
 			ArgsUsage: `append <presentation-id> <other-presentation-id> <slide-index>`,
 		},
+		{
+			Name:  "inspect",
+			Usage: "Inspect a presentation or slide",
+			Action: func(c *cli.Context) error {
+				return cmdInspect(c)
+			},
+			ArgsUsage: `inspect <presentation-id> <slide-index>`,
+		},
 	}
 	return app
 }
