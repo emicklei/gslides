@@ -35,7 +35,7 @@ func newApp() *cli.App {
 					Action: func(c *cli.Context) error {
 						return cmdExportThumbnails(c)
 					},
-					ArgsUsage: `export thumbnails`,
+					ArgsUsage: `export thumbnails <presentation-id>`,
 				},
 				{
 					Name:  "notes",
@@ -43,9 +43,17 @@ func newApp() *cli.App {
 					Action: func(c *cli.Context) error {
 						return cmdExportNotes(c)
 					},
-					ArgsUsage: `export notes`,
+					ArgsUsage: `export notes <presentation-id>`,
 				},
 			},
+		},
+		{
+			Name:  "append",
+			Usage: "Append a slide from one prestentation to another",
+			Action: func(c *cli.Context) error {
+				return cmdAppendSlide(c)
+			},
+			ArgsUsage: `append <presentation-id> <other-presentation-id> <slide-index>`,
 		},
 	}
 	return app

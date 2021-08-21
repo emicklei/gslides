@@ -9,8 +9,10 @@ import (
 	"google.golang.org/api/slides/v1"
 )
 
+// TODO find a way to use Google Default Application Credentials
+
 func getSlidesClient() (*slides.Service, *http.Client) {
-	b, err := ioutil.ReadFile("credentials.json")
+	b, err := ioutil.ReadFile("gslides.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
