@@ -5,6 +5,8 @@ import (
 	"log"
 	"strconv"
 
+	"github.com/davecgh/go-spew/spew"
+	"github.com/google/uuid"
 	"github.com/urfave/cli"
 	"google.golang.org/api/slides/v1"
 )
@@ -46,17 +48,37 @@ func cmdAppendSlide(c *cli.Context) error {
 		batchReq := new(slides.BatchUpdatePresentationRequest)
 		sourceSlide := presentationSource.Slides[sourceSlideIndex]
 		for _, each := range sourceSlide.PageElements {
+			fmt.Println("----------------------------------------")
+			//spew.Dump(each)
 			if each.Shape != nil {
+				spew.Dump(each.Shape)
 				props := new(slides.PageElementProperties)
 				props.PageObjectId = pageObjectId
 				props.Size = each.Size
 				props.Transform = each.Transform
+				shapeId := uuid.New().String()
 				req := &slides.CreateShapeRequest{
+					ObjectId:          shapeId,
 					ElementProperties: props,
 					ShapeType:         each.Shape.ShapeType,
 				}
 				addShape := &slides.Request{CreateShape: req}
 				batchReq.Requests = append(batchReq.Requests, addShape)
+
+				if each.Shape.ShapeType == "TEXT_BOX" {
+					for _, te := range each.Shape.Text.TextElements {
+						if te.TextRun != nil {
+							//add insert text
+							insertText := &slides.InsertTextRequest{
+								ObjectId: shapeId,
+								Text:     te.TextRun.Content,
+							}
+							log.Println("add insert text")
+							batchReq.Requests = append(batchReq.Requests, &slides.Request{InsertText: insertText})
+						}
+					}
+				}
+
 			}
 			if each.ElementGroup != nil {
 				todo("slide.pagelement.ElementGroup")
@@ -83,6 +105,7 @@ func cmdAppendSlide(c *cli.Context) error {
 				todo("slide.pagelement.WordArt")
 			}
 		}
+		log.Println("batch requests:", len(batchReq.Requests))
 		batchResp, err := srv.Presentations.BatchUpdate(presentationTarget.PresentationId, batchReq).Do()
 		if err != nil {
 			return fmt.Errorf("Unable to send batch update to presentation: %v", err)

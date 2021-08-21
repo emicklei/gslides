@@ -24,6 +24,12 @@ func newApp() *cli.App {
 	app.Usage = `Google Slides command line tool
 	see https://github.com/emicklei/gslides for documentation.
 `
+	// override -v
+	cli.VersionFlag = cli.BoolFlag{
+		Name:  "print-version, V",
+		Usage: "print only the version",
+	}
+	app.Flags = []cli.Flag{&cli.BoolFlag{Name: "v"}}
 	app.Commands = []cli.Command{
 		{
 			Name:  "export",
