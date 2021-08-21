@@ -15,6 +15,9 @@
     #
     gslides export notes <source-presentation-id>
 
+
+## work in progress
+
     # add slide number [index] from the source presentation to the end of target presentation
     #
     gslides append <target-presentation-id> <source-presentation-id> <slide-index>
