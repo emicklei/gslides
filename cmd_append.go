@@ -31,13 +31,18 @@ func cmdAppendSlide(c *cli.Context) error {
 		return fmt.Errorf("No such slide index: %v", sourceSlideIndex)
 	}
 	sourceSlideIndex-- // zero indexed
+	sourceSlide := presentationSource.Slides[sourceSlideIndex]
 
 	// collect all changes
 	batchReq := new(slides.BatchUpdatePresentationRequest)
 
+	appendMasterAndLayout(presentationSource, presentationTarget,
+		sourceSlide.SlideProperties.MasterObjectId,
+		sourceSlide.SlideProperties.LayoutObjectId,
+		batchReq)
+
 	// new slide
 	newSlideId := uuid.New().String()
-	sourceSlide := presentationSource.Slides[sourceSlideIndex]
 
 	for _, each := range sourceSlide.PageElements {
 		if each.Shape != nil && each.Shape.Placeholder != nil {
@@ -53,7 +58,7 @@ func cmdAppendSlide(c *cli.Context) error {
 	}
 	batchReq.Requests = append(batchReq.Requests, &slides.Request{CreateSlide: addSlide})
 
-	if c.GlobalBool("v") {
+	if Verbose {
 		// show masters
 		for _, each := range presentationSource.Masters {
 			log.Println("src master:", each.ObjectId, "type=", each.PageType, each.MasterProperties.DisplayName, "elements=", len(each.PageElements))
@@ -82,7 +87,7 @@ func cmdAppendSlide(c *cli.Context) error {
 	// copy all elements
 	for _, each := range sourceSlide.PageElements {
 		if each.Shape != nil {
-			copyShapeOfElement(c, each, newSlideId, batchReq)
+			copyShapeOfElement(each, newSlideId, batchReq)
 		}
 		if each.ElementGroup != nil {
 			todo("slide.pagelement.ElementGroup")
@@ -129,7 +134,7 @@ func layoutNameWithID(p *slides.Presentation, id string) string {
 	return "?"
 }
 
-func copyShapeOfElement(c *cli.Context, elem *slides.PageElement, newSlideId string, batch *slides.BatchUpdatePresentationRequest) {
+func copyShapeOfElement(elem *slides.PageElement, newSlideId string, batch *slides.BatchUpdatePresentationRequest) {
 	props := new(slides.PageElementProperties) // all props set
 	props.PageObjectId = newSlideId
 	props.Size = elem.Size
@@ -140,19 +145,19 @@ func copyShapeOfElement(c *cli.Context, elem *slides.PageElement, newSlideId str
 		ElementProperties: props,
 		ShapeType:         elem.Shape.ShapeType,
 	}
-	if c.GlobalBool("v") {
+	if Verbose {
 		log.Println("add create shape:", elem.Shape.ShapeType)
 	}
 	batch.Requests = append(batch.Requests, &slides.Request{CreateShape: req})
 
 	if elem.Shape.ShapeType == "TEXT_BOX" {
-		copyTextBox(c, elem.Shape, shapeId, batch)
+		copyTextBox(elem.Shape, shapeId, batch)
 		return
 	}
 	todo(elem.Shape.ShapeType)
 }
 
-func copyTextBox(c *cli.Context, src *slides.Shape, shapeId string, batch *slides.BatchUpdatePresentationRequest) {
+func copyTextBox(src *slides.Shape, shapeId string, batch *slides.BatchUpdatePresentationRequest) {
 	for _, te := range src.Text.TextElements {
 		if te.AutoText != nil {
 			todo("text box.auto text")
@@ -163,7 +168,7 @@ func copyTextBox(c *cli.Context, src *slides.Shape, shapeId string, batch *slide
 				//InsertionIndex: ,
 				Text: te.TextRun.Content,
 			}
-			if c.GlobalBool("v") {
+			if Verbose {
 				log.Println("add insert text:", te.TextRun.Content)
 			}
 			batch.Requests = append(batch.Requests, &slides.Request{InsertText: insertText})
@@ -175,7 +180,7 @@ func copyTextBox(c *cli.Context, src *slides.Shape, shapeId string, batch *slide
 				// TextRange: nil,
 				Fields: "*",
 			}
-			if c.GlobalBool("v") {
+			if Verbose {
 				log.Printf("set text style:%+v\n", te.TextRun.Style)
 			}
 			batch.Requests = append(batch.Requests, &slides.Request{UpdateTextStyle: updateStyle})
