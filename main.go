@@ -9,6 +9,7 @@ import (
 )
 
 var version = time.Now().String()
+var Verbose = false
 
 func main() {
 	if err := newApp().Run(os.Args); err != nil {
@@ -39,6 +40,7 @@ func newApp() *cli.App {
 					Name:  "thumbnails",
 					Usage: "Export a PNG file per slide",
 					Action: func(c *cli.Context) error {
+						Verbose = c.Bool("v")
 						return cmdExportThumbnails(c)
 					},
 					ArgsUsage: `export thumbnails <presentation-id>`,
@@ -47,6 +49,7 @@ func newApp() *cli.App {
 					Name:  "notes",
 					Usage: "Export a TXT file with notes per slide",
 					Action: func(c *cli.Context) error {
+						Verbose = c.Bool("v")
 						return cmdExportNotes(c)
 					},
 					ArgsUsage: `export notes <presentation-id>`,
@@ -57,6 +60,7 @@ func newApp() *cli.App {
 			Name:  "append",
 			Usage: "Append a slide from one prestentation to another",
 			Action: func(c *cli.Context) error {
+				Verbose = c.Bool("v")
 				return cmdAppendSlide(c)
 			},
 			ArgsUsage: `append <presentation-id> <other-presentation-id> <slide-index>`,
@@ -65,6 +69,7 @@ func newApp() *cli.App {
 			Name:  "inspect",
 			Usage: "Inspect a presentation or slide",
 			Action: func(c *cli.Context) error {
+				Verbose = c.Bool("v")
 				return cmdInspect(c)
 			},
 			ArgsUsage: `inspect <presentation-id> <slide-index>`,
