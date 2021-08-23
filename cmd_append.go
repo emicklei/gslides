@@ -50,11 +50,15 @@ func cmdAppendSlide(c *cli.Context) error {
 		}
 	}
 
+	sourceLayoutName := layoutNameWithID(presentationSource, sourceSlide.SlideProperties.LayoutObjectId)
 	addSlide := &slides.CreateSlideRequest{
 		ObjectId: newSlideId,
 		// PlaceholderIdMappings: mappings,
-		// SlideLayoutReference: &slides.LayoutReference{PredefinedLayout: (layoutNameWithID(presentationSource, sourceSlide.SlideProperties.LayoutObjectId))},
-		SlideLayoutReference: &slides.LayoutReference{LayoutId: presentationTarget.Layouts[0].ObjectId},
+		SlideLayoutReference: &slides.LayoutReference{
+			LayoutId: (layoutIDWithName(presentationTarget, sourceLayoutName)),
+			//PredefinedLayout: sourceLayoutName
+		},
+		//SlideLayoutReference: &slides.LayoutReference{LayoutId: presentationTarget.Layouts[0].ObjectId},
 	}
 	batchReq.Requests = append(batchReq.Requests, &slides.Request{CreateSlide: addSlide})
 
@@ -71,6 +75,7 @@ func cmdAppendSlide(c *cli.Context) error {
 		}
 		log.Println("source slide layout:", sourceSlide.SlideProperties.LayoutObjectId,
 			"master:", sourceSlide.SlideProperties.MasterObjectId)
+		log.Println("source side layout name", layoutNameWithID(presentationSource, sourceSlide.SlideProperties.LayoutObjectId))
 	}
 	// Add Source Master to Target if absent
 	// newMaster := &slides.Request{}
@@ -111,7 +116,7 @@ func cmdAppendSlide(c *cli.Context) error {
 			todo("slide.pagelement.WordArt")
 		}
 	}
-	if c.GlobalBool("v") {
+	if Verbose {
 		log.Println("batch requests:", len(batchReq.Requests))
 	}
 	_, err = srv.Presentations.BatchUpdate(presentationTarget.PresentationId, batchReq).Do()
@@ -123,6 +128,15 @@ func cmdAppendSlide(c *cli.Context) error {
 
 func todo(path string) {
 	log.Println("TODO:", path)
+}
+
+func layoutIDWithName(p *slides.Presentation, name string) string {
+	for _, each := range p.Layouts {
+		if each.LayoutProperties.Name == name {
+			return each.ObjectId
+		}
+	}
+	return "?"
 }
 
 func layoutNameWithID(p *slides.Presentation, id string) string {

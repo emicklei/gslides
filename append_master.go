@@ -57,5 +57,5 @@ func appendMasterAndLayout(
 }
 
 func appendMaster(sourceMaster *slides.Page, batch *slides.BatchUpdatePresentationRequest) {
-	dump(sourceMaster)
+	//dump(sourceMaster)
 }
