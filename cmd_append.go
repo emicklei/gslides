@@ -19,6 +19,7 @@ func cmdAppendSlide(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("Unable to retrieve data from target presentation: %v", err)
 	}
+	_ = presentationTarget
 	presentationSource, err := srv.Presentations.Get(c.Args()[1]).Do()
 	if err != nil {
 		return fmt.Errorf("Unable to retrieve data from source presentation: %v", err)
@@ -32,67 +33,47 @@ func cmdAppendSlide(c *cli.Context) error {
 	}
 	sourceSlideIndex-- // zero indexed
 	sourceSlide := presentationSource.Slides[sourceSlideIndex]
+	sourceLayoutName := layoutNameWithID(presentationSource, sourceSlide.SlideProperties.LayoutObjectId)
+	log.Println("src layout name:", sourceLayoutName)
+	layoutMappings := []*slides.LayoutPlaceholderIdMapping{}
+	ids := new(IDProvider)
+	for i, each := range sourceSlide.PageElements {
+		if each.Shape != nil && each.Shape.Placeholder != nil {
+			log.Println("src shape placeholder index", each.Shape.Placeholder.Index, "type", each.Shape.Placeholder.Type)
+		}
+		newID := ids.create()
+		log.Println("new shape gets id:", newID)
+		// layoutMappings = append(layoutMappings, &slides.LayoutPlaceholderIdMapping{
+		// 	ObjectId: newID,
+		// 	LayoutPlaceholder: &slides.Placeholder{
+		// 		Index: 0, //int64(i),
+		// 		Type:  each.Shape.Placeholder.Type,
+		// 	},
+		// })
+		log.Println("new mapping", "index:", i, "->", "id:", newID)
+	}
 
 	// collect all changes
 	batchReq := new(slides.BatchUpdatePresentationRequest)
 
-	appendMasterAndLayout(presentationSource, presentationTarget,
-		sourceSlide.SlideProperties.MasterObjectId,
-		sourceSlide.SlideProperties.LayoutObjectId,
-		batchReq)
+	newSlideID := uuid.NewString()
 
-	// new slide
-	newSlideId := uuid.New().String()
-
-	for _, each := range sourceSlide.PageElements {
-		if each.Shape != nil && each.Shape.Placeholder != nil {
-			log.Println("src shape placeholder index", each.Shape.Placeholder.Index, "type", each.Shape.ShapeType)
-		}
-	}
-
-	sourceLayoutName := layoutNameWithID(presentationSource, sourceSlide.SlideProperties.LayoutObjectId)
 	addSlide := &slides.CreateSlideRequest{
-		ObjectId: newSlideId,
-		// PlaceholderIdMappings: mappings,
+		ObjectId: newSlideID,
 		SlideLayoutReference: &slides.LayoutReference{
-			LayoutId: (layoutIDWithName(presentationTarget, sourceLayoutName)),
-			//PredefinedLayout: sourceLayoutName
+			PredefinedLayout: sourceLayoutName,
 		},
-		//SlideLayoutReference: &slides.LayoutReference{LayoutId: presentationTarget.Layouts[0].ObjectId},
+		PlaceholderIdMappings: layoutMappings,
 	}
 	batchReq.Requests = append(batchReq.Requests, &slides.Request{CreateSlide: addSlide})
 
-	if Verbose {
-		// show masters
-		for _, each := range presentationSource.Masters {
-			log.Println("src master:", each.ObjectId, "type=", each.PageType, each.MasterProperties.DisplayName, "elements=", len(each.PageElements))
-		}
-		for _, each := range presentationSource.Layouts {
-			log.Println("src layouts:", each.ObjectId, "type=", each.PageType, each.LayoutProperties.DisplayName, "elements=", len(each.PageElements))
-		}
-		for _, each := range presentationTarget.Masters {
-			log.Println("target master:", each.ObjectId, "type=", each.PageType, each.MasterProperties.DisplayName, "elements=", len(each.PageElements))
-		}
-		log.Println("source slide layout:", sourceSlide.SlideProperties.LayoutObjectId,
-			"master:", sourceSlide.SlideProperties.MasterObjectId)
-		log.Println("source side layout name", layoutNameWithID(presentationSource, sourceSlide.SlideProperties.LayoutObjectId))
-	}
-	// Add Source Master to Target if absent
-	// newMaster := &slides.Request{}
-
-	// updateSlideProps := &slides.UpdateSlidePropertiesRequest{
-	// 	ObjectId: newSlideId,
-	// 	SlideProperties: &slides.SlideProperties{
-	// 		MasterObjectId: presentationTarget.Masters[0].ObjectId,
-	// 	},
-	// 	Fields: "slideProperties", // cannot be updated :-( tried: *, masterObjectId
-	// }
-	//batchReq.Requests = append(batchReq.Requests, &slides.Request{UpdateSlideProperties: updateSlideProps})
-
-	// copy all elements
+	// elements
 	for _, each := range sourceSlide.PageElements {
+		if Verbose {
+			log.Println("title:", each.Title, " description:", each.Description, "element group", each.ElementGroup)
+		}
 		if each.Shape != nil {
-			copyShapeOfElement(each, newSlideId, batchReq)
+			copyShapeOfElement(each, newSlideID, ids.take(), batchReq)
 		}
 		if each.ElementGroup != nil {
 			todo("slide.pagelement.ElementGroup")
@@ -116,8 +97,10 @@ func cmdAppendSlide(c *cli.Context) error {
 			todo("slide.pagelement.WordArt")
 		}
 	}
+
+	// Send the batch
 	if Verbose {
-		log.Println("batch requests:", len(batchReq.Requests))
+		log.Println("target batch requests:", len(batchReq.Requests))
 	}
 	_, err = srv.Presentations.BatchUpdate(presentationTarget.PresentationId, batchReq).Do()
 	if err != nil {
@@ -126,41 +109,18 @@ func cmdAppendSlide(c *cli.Context) error {
 	return nil
 }
 
-func todo(path string) {
-	log.Println("TODO:", path)
-}
-
-func layoutIDWithName(p *slides.Presentation, name string) string {
-	for _, each := range p.Layouts {
-		if each.LayoutProperties.Name == name {
-			return each.ObjectId
-		}
-	}
-	return "?"
-}
-
-func layoutNameWithID(p *slides.Presentation, id string) string {
-	for _, each := range p.Layouts {
-		if each.ObjectId == id {
-			return each.LayoutProperties.Name
-		}
-	}
-	return "?"
-}
-
-func copyShapeOfElement(elem *slides.PageElement, newSlideId string, batch *slides.BatchUpdatePresentationRequest) {
+func copyShapeOfElement(elem *slides.PageElement, newSlideId, shapeId string, batch *slides.BatchUpdatePresentationRequest) {
 	props := new(slides.PageElementProperties) // all props set
 	props.PageObjectId = newSlideId
 	props.Size = elem.Size
 	props.Transform = elem.Transform
-	shapeId := uuid.New().String()
 	req := &slides.CreateShapeRequest{ // all props set
 		ObjectId:          shapeId,
 		ElementProperties: props,
 		ShapeType:         elem.Shape.ShapeType,
 	}
 	if Verbose {
-		log.Println("add create shape:", elem.Shape.ShapeType)
+		log.Println("create shape:", shapeId, " type:", elem.Shape.ShapeType)
 	}
 	batch.Requests = append(batch.Requests, &slides.Request{CreateShape: req})
 
@@ -179,25 +139,24 @@ func copyTextBox(src *slides.Shape, shapeId string, batch *slides.BatchUpdatePre
 		if te.TextRun != nil {
 			insertText := &slides.InsertTextRequest{
 				ObjectId: shapeId,
-				//InsertionIndex: ,
-				Text: te.TextRun.Content,
+				Text:     te.TextRun.Content,
 			}
 			if Verbose {
-				log.Println("add insert text:", te.TextRun.Content)
+				log.Println("textbox:", shapeId, " gets text:", te.TextRun.Content)
 			}
 			batch.Requests = append(batch.Requests, &slides.Request{InsertText: insertText})
 
-			// style
-			updateStyle := &slides.UpdateTextStyleRequest{
-				ObjectId: shapeId,
-				Style:    te.TextRun.Style,
-				// TextRange: nil,
-				Fields: "*",
+			/** no visual effect yet
+
+			if te.ParagraphMarker != nil {
+				updateStyle := &slides.UpdateParagraphStyleRequest{
+					ObjectId: shapeId,
+					Style:    te.ParagraphMarker.Style,
+					Fields:   "*",
+				}
+				batch.Requests = append(batch.Requests, &slides.Request{UpdateParagraphStyle: updateStyle})
 			}
-			if Verbose {
-				log.Printf("set text style:%+v\n", te.TextRun.Style)
-			}
-			batch.Requests = append(batch.Requests, &slides.Request{UpdateTextStyle: updateStyle})
+			**/
 		}
 	}
 }
