@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/kortschak/utter"
 	"github.com/urfave/cli"
 	"google.golang.org/api/slides/v1"
 )
@@ -37,20 +38,18 @@ func cmdAppendSlide(c *cli.Context) error {
 	log.Println("src layout name:", sourceLayoutName)
 	layoutMappings := []*slides.LayoutPlaceholderIdMapping{}
 	ids := new(IDProvider)
-	for i, each := range sourceSlide.PageElements {
+	for _, each := range sourceSlide.PageElements {
 		if each.Shape != nil && each.Shape.Placeholder != nil {
-			log.Println("src shape placeholder index", each.Shape.Placeholder.Index, "type", each.Shape.Placeholder.Type)
+			newID := ids.create()
+			layoutMappings = append(layoutMappings, &slides.LayoutPlaceholderIdMapping{
+				ObjectId: newID,
+				LayoutPlaceholder: &slides.Placeholder{
+					Index: int64(each.Shape.Placeholder.Index),
+					Type:  each.Shape.Placeholder.Type,
+				},
+			})
+			log.Println("new mapping", "index:", each.Shape.Placeholder.Index, "type", each.Shape.Placeholder.Type, "->", "id:", newID)
 		}
-		newID := ids.create()
-		log.Println("new shape gets id:", newID)
-		// layoutMappings = append(layoutMappings, &slides.LayoutPlaceholderIdMapping{
-		// 	ObjectId: newID,
-		// 	LayoutPlaceholder: &slides.Placeholder{
-		// 		Index: 0, //int64(i),
-		// 		Type:  each.Shape.Placeholder.Type,
-		// 	},
-		// })
-		log.Println("new mapping", "index:", i, "->", "id:", newID)
 	}
 
 	// collect all changes
@@ -101,6 +100,10 @@ func cmdAppendSlide(c *cli.Context) error {
 	// Send the batch
 	if Verbose {
 		log.Println("target batch requests:", len(batchReq.Requests))
+		for _, each := range batchReq.Requests {
+			utter.Config.OmitZero = true
+			fmt.Println(utter.Sdump(each))
+		}
 	}
 	_, err = srv.Presentations.BatchUpdate(presentationTarget.PresentationId, batchReq).Do()
 	if err != nil {
@@ -110,19 +113,19 @@ func cmdAppendSlide(c *cli.Context) error {
 }
 
 func copyShapeOfElement(elem *slides.PageElement, newSlideId, shapeId string, batch *slides.BatchUpdatePresentationRequest) {
-	props := new(slides.PageElementProperties) // all props set
-	props.PageObjectId = newSlideId
-	props.Size = elem.Size
-	props.Transform = elem.Transform
-	req := &slides.CreateShapeRequest{ // all props set
-		ObjectId:          shapeId,
-		ElementProperties: props,
-		ShapeType:         elem.Shape.ShapeType,
-	}
-	if Verbose {
-		log.Println("create shape:", shapeId, " type:", elem.Shape.ShapeType)
-	}
-	batch.Requests = append(batch.Requests, &slides.Request{CreateShape: req})
+	// props := new(slides.PageElementProperties) // all props set
+	// props.PageObjectId = newSlideId
+	// props.Size = elem.Size
+	// props.Transform = elem.Transform
+	// req := &slides.CreateShapeRequest{ // all props set
+	// 	ObjectId:          shapeId,
+	// 	ElementProperties: props,
+	// 	ShapeType:         elem.Shape.ShapeType,
+	// }
+	// if Verbose {
+	// 	log.Println("create shape:", shapeId, " type:", elem.Shape.ShapeType)
+	// }
+	// batch.Requests = append(batch.Requests, &slides.Request{CreateShape: req})
 
 	if elem.Shape.ShapeType == "TEXT_BOX" {
 		copyTextBox(elem.Shape, shapeId, batch)
