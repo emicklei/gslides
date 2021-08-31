@@ -18,9 +18,10 @@
 
 ## work in progress
 
-    # add slide number [index] from the source presentation to the end of target presentation
+    # add slide numbers *index1* and *index2* from the source presentation to the end of target presentation
+    # slides appended will use the layout styling of the target master.
     #
-    gslides append <target-presentation-id> <source-presentation-id> <slide-index>
+    gslides append <target-presentation-id> <source-presentation-id> index1,index2
 
 Commands expect an identifier of a Google slidedeck, such as `1EA.......C6Vuc`.
 
