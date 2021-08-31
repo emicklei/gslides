@@ -1,8 +1,12 @@
 # gslides - tool to work with the Google Slides API
 
+## install
+
+    go install github.com/emicklei/gslides@latest
+
 ## requirements
 
-Then get your OAuth client ID credentials:
+Get your OAuth client ID credentials:
 
 * Create (or reuse) a developer project at <https://console.developers.google.com>
 * Enable Google Slides API at [API library page](https://console.developers.google.com/apis/library)
