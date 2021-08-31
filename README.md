@@ -23,7 +23,7 @@ Get your OAuth client ID credentials:
     gslides export thumbnails <source-presentation-id>
 
  Create TXT file with notes from each slide in a presentation.
-    #
+    
     gslides export notes <source-presentation-id>
 
 
