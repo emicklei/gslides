@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/kortschak/utter"
@@ -25,10 +26,23 @@ func cmdAppendSlide(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("Unable to retrieve data from source presentation: %v", err)
 	}
-	sourceSlideIndex, err := strconv.Atoi(c.Args()[2])
-	if err != nil {
-		return fmt.Errorf("Invalid slide presentation index: %v", err)
+	indices := strings.Split(c.Args()[2], ",")
+	if len(indices) == 0 {
+		return fmt.Errorf("Missing comma separated list of slide indices")
 	}
+	for _, each := range indices {
+		sourceSlideIndex, err := strconv.Atoi(each)
+		if err != nil {
+			return fmt.Errorf("Invalid slide presentation index: %v", err)
+		}
+		if err := appendSlide(srv, sourceSlideIndex, presentationSource, presentationTarget); err != nil {
+			return fmt.Errorf("Unable to append slide presentation index: %d error:%v", sourceSlideIndex, err)
+		}
+	}
+	return nil
+}
+
+func appendSlide(service *slides.Service, sourceSlideIndex int, presentationSource, presentationTarget *slides.Presentation) error {
 	if sourceSlideIndex >= len(presentationSource.Slides) {
 		return fmt.Errorf("No such slide index: %v", sourceSlideIndex)
 	}
@@ -72,7 +86,8 @@ func cmdAppendSlide(c *cli.Context) error {
 			log.Println("title:", each.Title, " description:", each.Description, "element group", each.ElementGroup)
 		}
 		if each.Shape != nil {
-			copyShapeOfElement(each, newSlideID, ids.take(), batchReq)
+			id, isMapped := ids.take()
+			copyShapeOfElement(each, newSlideID, id, isMapped, batchReq)
 		}
 		if each.ElementGroup != nil {
 			todo("slide.pagelement.ElementGroup")
@@ -105,36 +120,38 @@ func cmdAppendSlide(c *cli.Context) error {
 			fmt.Println(utter.Sdump(each))
 		}
 	}
-	_, err = srv.Presentations.BatchUpdate(presentationTarget.PresentationId, batchReq).Do()
+	_, err := service.Presentations.BatchUpdate(presentationTarget.PresentationId, batchReq).Do()
 	if err != nil {
 		return fmt.Errorf("Unable to send batch update to presentation: %v", err)
 	}
 	return nil
 }
 
-func copyShapeOfElement(elem *slides.PageElement, newSlideId, shapeId string, batch *slides.BatchUpdatePresentationRequest) {
-	// props := new(slides.PageElementProperties) // all props set
-	// props.PageObjectId = newSlideId
-	// props.Size = elem.Size
-	// props.Transform = elem.Transform
-	// req := &slides.CreateShapeRequest{ // all props set
-	// 	ObjectId:          shapeId,
-	// 	ElementProperties: props,
-	// 	ShapeType:         elem.Shape.ShapeType,
-	// }
-	// if Verbose {
-	// 	log.Println("create shape:", shapeId, " type:", elem.Shape.ShapeType)
-	// }
-	// batch.Requests = append(batch.Requests, &slides.Request{CreateShape: req})
-
+func copyShapeOfElement(elem *slides.PageElement, newSlideId, shapeId string, shapeIdIsMapped bool, batch *slides.BatchUpdatePresentationRequest) {
+	// if the shape is mapped then it is already created by the layout else we create the extra shape
+	if !shapeIdIsMapped {
+		props := new(slides.PageElementProperties) // all props set
+		props.PageObjectId = newSlideId
+		props.Size = elem.Size
+		props.Transform = elem.Transform
+		req := &slides.CreateShapeRequest{ // all props set
+			ObjectId:          shapeId,
+			ElementProperties: props,
+			ShapeType:         elem.Shape.ShapeType,
+		}
+		if Verbose {
+			log.Println("create shape:", shapeId, " type:", elem.Shape.ShapeType)
+		}
+		batch.Requests = append(batch.Requests, &slides.Request{CreateShape: req})
+	}
 	if elem.Shape.ShapeType == "TEXT_BOX" {
-		copyTextBox(elem.Shape, shapeId, batch)
+		copyTextBox(elem.Shape, shapeId, shapeIdIsMapped, batch)
 		return
 	}
 	todo(elem.Shape.ShapeType)
 }
 
-func copyTextBox(src *slides.Shape, shapeId string, batch *slides.BatchUpdatePresentationRequest) {
+func copyTextBox(src *slides.Shape, shapeId string, shapeIdIsMapped bool, batch *slides.BatchUpdatePresentationRequest) {
 	for _, te := range src.Text.TextElements {
 		if te.AutoText != nil {
 			todo("text box.auto text")
@@ -149,17 +166,27 @@ func copyTextBox(src *slides.Shape, shapeId string, batch *slides.BatchUpdatePre
 			}
 			batch.Requests = append(batch.Requests, &slides.Request{InsertText: insertText})
 
-			/** no visual effect yet
-
-			if te.ParagraphMarker != nil {
-				updateStyle := &slides.UpdateParagraphStyleRequest{
-					ObjectId: shapeId,
-					Style:    te.ParagraphMarker.Style,
-					Fields:   "*",
+			// if the shape is mapped then it is already styled by the layout else we update the styling
+			if !shapeIdIsMapped {
+				if te.TextRun.Style != nil {
+					updateStyle := &slides.UpdateTextStyleRequest{
+						ObjectId: shapeId,
+						Style:    te.TextRun.Style,
+						Fields:   "*",
+					}
+					batch.Requests = append(batch.Requests, &slides.Request{UpdateTextStyle: updateStyle})
 				}
-				batch.Requests = append(batch.Requests, &slides.Request{UpdateParagraphStyle: updateStyle})
+
+				// TODO find example
+				if te.ParagraphMarker != nil {
+					updateStyle := &slides.UpdateParagraphStyleRequest{
+						ObjectId: shapeId,
+						Style:    te.ParagraphMarker.Style,
+						Fields:   "*",
+					}
+					batch.Requests = append(batch.Requests, &slides.Request{UpdateParagraphStyle: updateStyle})
+				}
 			}
-			**/
 		}
 	}
 }

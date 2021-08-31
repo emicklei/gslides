@@ -14,11 +14,12 @@ func (p *IDProvider) create() string {
 	return new
 }
 
-func (p *IDProvider) take() string {
+// returns UUID and whether it was created with mapping.
+func (p *IDProvider) take() (string, bool) {
 	if p.next == len(p.ids) {
-		panic("no more ids")
+		return uuid.NewString(), false
 	}
 	id := p.ids[p.next]
 	p.next++
-	return id
+	return id, true
 }
