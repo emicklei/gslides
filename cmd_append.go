@@ -19,34 +19,40 @@ func cmdAppendSlide(c *cli.Context) error {
 	srv, _ := getSlidesClient()
 	presentationTarget, err := srv.Presentations.Get(c.Args()[0]).Do()
 	if err != nil {
-		return fmt.Errorf("Unable to retrieve data from target presentation: %v", err)
+		return fmt.Errorf("unable to retrieve data from target presentation: %v", err)
 	}
 	_ = presentationTarget
 	presentationSource, err := srv.Presentations.Get(c.Args()[1]).Do()
 	if err != nil {
-		return fmt.Errorf("Unable to retrieve data from source presentation: %v", err)
+		return fmt.Errorf("unable to retrieve data from source presentation: %v", err)
 	}
 	indices := strings.Split(c.Args()[2], ",")
 	if len(indices) == 0 {
-		return fmt.Errorf("Missing comma separated list of slide indices")
+		return fmt.Errorf("missing comma separated list of slide indices")
 	}
+	// collect all changes
+	batchReq := new(slides.BatchUpdatePresentationRequest)
 	for _, each := range indices {
 		sourceSlideIndex, err := strconv.Atoi(each)
 		if err != nil {
-			return fmt.Errorf("Invalid slide presentation index: %v", err)
+			return fmt.Errorf("invalid slide presentation index: %v", err)
 		}
-		if err := appendSlide(srv, sourceSlideIndex, presentationSource, presentationTarget); err != nil {
-			return fmt.Errorf("Unable to append slide presentation index: %d error:%v", sourceSlideIndex, err)
+		sourceSlideIndex-- // zero indexed
+		if err := appendSlide(sourceSlideIndex, presentationSource, presentationTarget, batchReq); err != nil {
+			return fmt.Errorf("unable to append slide presentation index: %d error:%v", sourceSlideIndex, err)
 		}
+	}
+	_, err = srv.Presentations.BatchUpdate(presentationTarget.PresentationId, batchReq).Do()
+	if err != nil {
+		return fmt.Errorf("unable to send batch update to presentation: %v", err)
 	}
 	return nil
 }
 
-func appendSlide(service *slides.Service, sourceSlideIndex int, presentationSource, presentationTarget *slides.Presentation) error {
+func appendSlide(sourceSlideIndex int, presentationSource, presentationTarget *slides.Presentation, batchReq *slides.BatchUpdatePresentationRequest) error {
 	if sourceSlideIndex >= len(presentationSource.Slides) {
-		return fmt.Errorf("No such slide index: %v", sourceSlideIndex)
+		return fmt.Errorf("no such slide index: %v", sourceSlideIndex)
 	}
-	sourceSlideIndex-- // zero indexed
 	sourceSlide := presentationSource.Slides[sourceSlideIndex]
 	sourceLayoutName := layoutNameWithID(presentationSource, sourceSlide.SlideProperties.LayoutObjectId)
 	log.Println("src layout name:", sourceLayoutName)
@@ -65,9 +71,6 @@ func appendSlide(service *slides.Service, sourceSlideIndex int, presentationSour
 			log.Println("new mapping", "index:", each.Shape.Placeholder.Index, "type", each.Shape.Placeholder.Type, "->", "id:", newID)
 		}
 	}
-
-	// collect all changes
-	batchReq := new(slides.BatchUpdatePresentationRequest)
 
 	newSlideID := uuid.NewString()
 
@@ -120,10 +123,6 @@ func appendSlide(service *slides.Service, sourceSlideIndex int, presentationSour
 			fmt.Println(utter.Sdump(each))
 		}
 	}
-	_, err := service.Presentations.BatchUpdate(presentationTarget.PresentationId, batchReq).Do()
-	if err != nil {
-		return fmt.Errorf("Unable to send batch update to presentation: %v", err)
-	}
 	return nil
 }
 
@@ -152,6 +151,12 @@ func copyShapeOfElement(elem *slides.PageElement, newSlideId, shapeId string, sh
 }
 
 func copyTextBox(src *slides.Shape, shapeId string, shapeIdIsMapped bool, batch *slides.BatchUpdatePresentationRequest) {
+	if src.Text == nil {
+		if Verbose {
+			log.Println("skip TEXT_BOX shape without Text (nil)")
+		}
+		return
+	}
 	for _, te := range src.Text.TextElements {
 		if te.AutoText != nil {
 			todo("text box.auto text")

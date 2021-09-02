@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/urfave/cli"
+	"google.golang.org/api/slides/v1"
 )
 
 // go run *.go -v inspect 1q9VqtPPwyGre9-o3uzlu_u7AEJh-jVFlkB02wJfi4EA 13
@@ -12,19 +13,33 @@ func cmdInspect(c *cli.Context) error {
 	srv, _ := getSlidesClient()
 	presentationTarget, err := srv.Presentations.Get(c.Args()[0]).Do()
 	if err != nil {
-		return fmt.Errorf("Unable to retrieve data from target presentation: %v", err)
+		return fmt.Errorf("unable to retrieve data from target presentation: %v", err)
 	}
 	if len(c.Args()) == 2 {
 		i, err := strconv.Atoi(c.Args()[1])
 		if err != nil {
-			return fmt.Errorf("Unable to convert slide index: %v", err)
+			return fmt.Errorf("unable to convert slide index: %v", err)
 		}
 		if i <= 0 || i > len(presentationTarget.Slides) {
-			return fmt.Errorf("No such slide index: %v", err)
+			return fmt.Errorf("no such slide index: %v", err)
 		}
-		dump(presentationTarget.Slides[i-1])
+		reportSlide(presentationTarget.Slides[i-1])
 	} else {
-		dump(presentationTarget)
+		reportPresentation(presentationTarget)
 	}
 	return nil
+}
+
+func reportSlide(s *slides.Page) {
+
+}
+func reportPresentation(p *slides.Presentation) {
+	fmt.Println("masters:", len(p.Masters))
+	for _, each := range p.Masters {
+		fmt.Println("master:", each.ObjectId, "name:", each.MasterProperties.DisplayName, "pages:", len(each.PageElements))
+	}
+	fmt.Println("layouts:", len(p.Layouts))
+	for _, each := range p.Layouts {
+		fmt.Println("layout:", each.ObjectId, "name:", each.LayoutProperties.Name, "pages:", len(each.PageElements))
+	}
 }

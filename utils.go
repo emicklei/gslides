@@ -3,15 +3,13 @@ package main
 import (
 	"log"
 
-	"github.com/skinass/go-spew/spew"
+	"github.com/kortschak/utter"
 	"google.golang.org/api/slides/v1"
 )
 
 func dump(what interface{}) {
-
-	spew.Config.DisableNilValues = true
-	spew.Config.DisableZeroValues = true
-	spew.Dump(what)
+	utter.Config.OmitZero = false
+	utter.Dump(what)
 }
 
 func todo(path string) {
