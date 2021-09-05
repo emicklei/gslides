@@ -33,3 +33,11 @@ func layoutNameWithID(p *slides.Presentation, id string) string {
 	}
 	return "?"
 }
+
+// 3 ->  [1,2,3]
+func makeIndices(size int) (list []int) {
+	for i := 0; i < size; i++ {
+		list = append(list, i+1)
+	}
+	return
+}

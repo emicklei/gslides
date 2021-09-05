@@ -26,20 +26,30 @@ func cmdAppendSlide(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("unable to retrieve data from source presentation: %v", err)
 	}
-	indices := strings.Split(c.Args()[2], ",")
+	// accept all or comma list of 1-based indices
+	var indices []int
+	if len(c.Args()) > 1 {
+		if c.Args()[2] == "all" {
+			indices = makeIndices(len(presentationSource.Slides))
+		} else {
+			for _, each := range strings.Split(c.Args()[2], ",") {
+				sourceSlideIndex, err := strconv.Atoi(each)
+				if err != nil {
+					return fmt.Errorf("invalid slide presentation index: %v", err)
+				}
+				indices = append(indices, sourceSlideIndex)
+			}
+		}
+	}
 	if len(indices) == 0 {
-		return fmt.Errorf("missing comma separated list of slide indices")
+		return fmt.Errorf("missing comma separated list of slide indices or [all]")
 	}
 	// collect all changes
 	batchReq := new(slides.BatchUpdatePresentationRequest)
 	for _, each := range indices {
-		sourceSlideIndex, err := strconv.Atoi(each)
-		if err != nil {
-			return fmt.Errorf("invalid slide presentation index: %v", err)
-		}
-		sourceSlideIndex-- // zero indexed
-		if err := appendSlide(sourceSlideIndex, presentationSource, presentationTarget, batchReq); err != nil {
-			return fmt.Errorf("unable to append slide presentation index: %d error:%v", sourceSlideIndex, err)
+		// zero indexed
+		if err := appendSlide(each-1, presentationSource, presentationTarget, batchReq); err != nil {
+			return fmt.Errorf("unable to append slide presentation index: %d error:%v", each-1, err)
 		}
 	}
 	_, err = srv.Presentations.BatchUpdate(presentationTarget.PresentationId, batchReq).Do()
@@ -96,10 +106,10 @@ func appendSlide(sourceSlideIndex int, presentationSource, presentationTarget *s
 			todo("slide.pagelement.ElementGroup")
 		}
 		if each.Image != nil {
-			todo("slide.pagelement.Image")
+			copyImageOfElement(each, newSlideID, batchReq)
 		}
 		if each.Line != nil {
-			todo("slide.pagelement.Line")
+			copyLineOfElement(each, newSlideID, batchReq)
 		}
 		if each.Table != nil {
 			todo("slide.pagelement.Table")
@@ -116,7 +126,7 @@ func appendSlide(sourceSlideIndex int, presentationSource, presentationTarget *s
 	}
 
 	// Send the batch
-	if Verbose {
+	if Verbose && false {
 		log.Println("target batch requests:", len(batchReq.Requests))
 		for _, each := range batchReq.Requests {
 			utter.Config.OmitZero = true
@@ -124,6 +134,51 @@ func appendSlide(sourceSlideIndex int, presentationSource, presentationTarget *s
 		}
 	}
 	return nil
+}
+
+func copyImageOfElement(elem *slides.PageElement, newSlideId string, batch *slides.BatchUpdatePresentationRequest) {
+	props := new(slides.PageElementProperties) // all props set
+	props.PageObjectId = newSlideId
+	props.Size = elem.Size
+	props.Transform = elem.Transform
+	shapeId := uuid.NewString()
+	url := elem.Image.SourceUrl
+	if len(url) == 0 {
+		url = elem.Image.ContentUrl
+	}
+	req := &slides.CreateImageRequest{ // all props set
+		ObjectId:          shapeId,
+		ElementProperties: props,
+		Url:               url,
+	}
+	if Verbose {
+		log.Println("create image:", shapeId, " url:", url)
+	}
+	batch.Requests = append(batch.Requests, &slides.Request{CreateImage: req})
+}
+
+func copyLineOfElement(elem *slides.PageElement, newSlideId string, batch *slides.BatchUpdatePresentationRequest) {
+	props := new(slides.PageElementProperties) // all props set
+	props.PageObjectId = newSlideId
+	props.Size = elem.Size
+	props.Transform = elem.Transform
+	shapeId := uuid.NewString()
+
+	req := &slides.CreateLineRequest{ // all props set
+		ObjectId:          shapeId,
+		ElementProperties: props,
+		Category:          elem.Line.LineCategory,
+	}
+	if Verbose {
+		log.Println("create line:", shapeId, " category:", elem.Line.LineCategory)
+	}
+	batch.Requests = append(batch.Requests, &slides.Request{CreateLine: req})
+
+	// modifiers
+	{
+		req := &slides.UpdateLineCategoryRequest{}
+		batch.Requests = append(batch.Requests, &slides.Request{CreateLine: req})
+	}
 }
 
 func copyShapeOfElement(elem *slides.PageElement, newSlideId, shapeId string, shapeIdIsMapped bool, batch *slides.BatchUpdatePresentationRequest) {
