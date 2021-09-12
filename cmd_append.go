@@ -95,9 +95,6 @@ func appendSlide(sourceSlideIndex int, presentationSource, presentationTarget *s
 
 	// elements
 	for _, each := range sourceSlide.PageElements {
-		if Verbose {
-			log.Println("title:", each.Title, " description:", each.Description, "element group", each.ElementGroup)
-		}
 		if each.Shape != nil {
 			id, isMapped := ids.take()
 			copyShapeOfElement(each, newSlideID, id, isMapped, batchReq)
@@ -176,8 +173,21 @@ func copyLineOfElement(elem *slides.PageElement, newSlideId string, batch *slide
 
 	// modifiers
 	{
-		req := &slides.UpdateLineCategoryRequest{}
-		batch.Requests = append(batch.Requests, &slides.Request{CreateLine: req})
+		req := &slides.UpdateLinePropertiesRequest{
+			ObjectId: shapeId,
+			// direct assign lineprops?
+			LineProperties: &slides.LineProperties{
+				DashStyle:       elem.Line.LineProperties.DashStyle,
+				StartArrow:      elem.Line.LineProperties.StartArrow,
+				EndArrow:        elem.Line.LineProperties.EndArrow,
+				LineFill:        elem.Line.LineProperties.LineFill,
+				Weight:          elem.Line.LineProperties.Weight,
+				StartConnection: elem.Line.LineProperties.StartConnection,
+				EndConnection:   elem.Line.LineProperties.EndConnection,
+			},
+			Fields: "*",
+		}
+		batch.Requests = append(batch.Requests, &slides.Request{UpdateLineProperties: req})
 	}
 }
 
@@ -197,12 +207,25 @@ func copyShapeOfElement(elem *slides.PageElement, newSlideId, shapeId string, sh
 			log.Println("create shape:", shapeId, " type:", elem.Shape.ShapeType)
 		}
 		batch.Requests = append(batch.Requests, &slides.Request{CreateShape: req})
+		{
+			// modifiers
+			req := &slides.UpdateShapePropertiesRequest{
+				ObjectId:        shapeId,
+				ShapeProperties: elem.Shape.ShapeProperties,
+				// cannot use * or shapeProperties, autofit
+				Fields: "shapeBackgroundFill,outline,shadow,contentAlignment,link",
+			}
+			batch.Requests = append(batch.Requests, &slides.Request{UpdateShapeProperties: req})
+		}
+
 	}
 	if elem.Shape.ShapeType == "TEXT_BOX" {
 		copyTextBox(elem.Shape, shapeId, shapeIdIsMapped, batch)
 		return
 	}
-	todo(elem.Shape.ShapeType)
+	if Verbose {
+		todo(elem.Shape.ShapeType)
+	}
 }
 
 func copyTextBox(src *slides.Shape, shapeId string, shapeIdIsMapped bool, batch *slides.BatchUpdatePresentationRequest) {
