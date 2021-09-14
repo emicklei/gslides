@@ -93,23 +93,45 @@ func appendSlide(sourceSlideIndex int, presentationSource, presentationTarget *s
 	}
 	batchReq.Requests = append(batchReq.Requests, &slides.Request{CreateSlide: addSlide})
 
+	// background
+	// TODO: googleapi: Error 500: Internal error encountered., backendError
+	/**
+	{
+		req := &slides.UpdatePagePropertiesRequest{
+			ObjectId: newSlideID,
+			PageProperties: &slides.PageProperties{
+				PageBackgroundFill: sourceSlide.PageProperties.PageBackgroundFill,
+			},
+			Fields: "pageBackgroundFill.solidFill.color",
+		}
+		batchReq.Requests = append(batchReq.Requests, &slides.Request{UpdatePageProperties: req})
+	}
+	**/
+
+	copier := &SlideCopier{
+		sourceSlide:        sourceSlide,
+		batch:              batchReq,
+		targetPresentation: presentationTarget,
+		newSlideId:         newSlideID,
+	}
+
 	// elements
 	for _, each := range sourceSlide.PageElements {
 		if each.Shape != nil {
 			id, isMapped := ids.take()
-			copyShapeOfElement(each, newSlideID, id, isMapped, batchReq)
+			copier.copyShapeOfElement(each, id, isMapped)
 		}
 		if each.ElementGroup != nil {
 			todo("slide.pagelement.ElementGroup")
 		}
 		if each.Image != nil {
-			copyImageOfElement(each, newSlideID, batchReq)
+			copier.copyImageOfElement(each)
 		}
 		if each.Line != nil {
-			copyLineOfElement(each, newSlideID, batchReq)
+			copier.copyLineOfElement(each)
 		}
 		if each.Table != nil {
-			todo("slide.pagelement.Table")
+			copier.copyTableOfElement(each)
 		}
 		if each.SheetsChart != nil {
 			todo("slide.pagelement.SheetsChart")
@@ -131,145 +153,4 @@ func appendSlide(sourceSlideIndex int, presentationSource, presentationTarget *s
 		}
 	}
 	return nil
-}
-
-func copyImageOfElement(elem *slides.PageElement, newSlideId string, batch *slides.BatchUpdatePresentationRequest) {
-	props := new(slides.PageElementProperties) // all props set
-	props.PageObjectId = newSlideId
-	props.Size = elem.Size
-	props.Transform = elem.Transform
-	shapeId := uuid.NewString()
-	url := elem.Image.SourceUrl
-	if len(url) == 0 {
-		url = elem.Image.ContentUrl
-	}
-	req := &slides.CreateImageRequest{ // all props set
-		ObjectId:          shapeId,
-		ElementProperties: props,
-		Url:               url,
-	}
-	if Verbose {
-		log.Println("create image:", shapeId, " url:", url)
-	}
-	batch.Requests = append(batch.Requests, &slides.Request{CreateImage: req})
-}
-
-func copyLineOfElement(elem *slides.PageElement, newSlideId string, batch *slides.BatchUpdatePresentationRequest) {
-	props := new(slides.PageElementProperties) // all props set
-	props.PageObjectId = newSlideId
-	props.Size = elem.Size
-	props.Transform = elem.Transform
-	shapeId := uuid.NewString()
-
-	req := &slides.CreateLineRequest{ // all props set
-		ObjectId:          shapeId,
-		ElementProperties: props,
-		Category:          elem.Line.LineCategory,
-	}
-	if Verbose {
-		log.Println("create line:", shapeId, " category:", elem.Line.LineCategory)
-	}
-	batch.Requests = append(batch.Requests, &slides.Request{CreateLine: req})
-
-	// modifiers
-	{
-		req := &slides.UpdateLinePropertiesRequest{
-			ObjectId: shapeId,
-			// direct assign lineprops?
-			LineProperties: &slides.LineProperties{
-				DashStyle:       elem.Line.LineProperties.DashStyle,
-				StartArrow:      elem.Line.LineProperties.StartArrow,
-				EndArrow:        elem.Line.LineProperties.EndArrow,
-				LineFill:        elem.Line.LineProperties.LineFill,
-				Weight:          elem.Line.LineProperties.Weight,
-				StartConnection: elem.Line.LineProperties.StartConnection,
-				EndConnection:   elem.Line.LineProperties.EndConnection,
-			},
-			Fields: "*",
-		}
-		batch.Requests = append(batch.Requests, &slides.Request{UpdateLineProperties: req})
-	}
-}
-
-func copyShapeOfElement(elem *slides.PageElement, newSlideId, shapeId string, shapeIdIsMapped bool, batch *slides.BatchUpdatePresentationRequest) {
-	// if the shape is mapped then it is already created by the layout else we create the extra shape
-	if !shapeIdIsMapped {
-		props := new(slides.PageElementProperties) // all props set
-		props.PageObjectId = newSlideId
-		props.Size = elem.Size
-		props.Transform = elem.Transform
-		req := &slides.CreateShapeRequest{ // all props set
-			ObjectId:          shapeId,
-			ElementProperties: props,
-			ShapeType:         elem.Shape.ShapeType,
-		}
-		if Verbose {
-			log.Println("create shape:", shapeId, " type:", elem.Shape.ShapeType)
-		}
-		batch.Requests = append(batch.Requests, &slides.Request{CreateShape: req})
-		{
-			// modifiers
-			req := &slides.UpdateShapePropertiesRequest{
-				ObjectId:        shapeId,
-				ShapeProperties: elem.Shape.ShapeProperties,
-				// cannot use * or shapeProperties, autofit
-				Fields: "shapeBackgroundFill,outline,shadow,contentAlignment,link",
-			}
-			batch.Requests = append(batch.Requests, &slides.Request{UpdateShapeProperties: req})
-		}
-
-	}
-	if elem.Shape.ShapeType == "TEXT_BOX" {
-		copyTextBox(elem.Shape, shapeId, shapeIdIsMapped, batch)
-		return
-	}
-	if Verbose {
-		todo(elem.Shape.ShapeType)
-	}
-}
-
-func copyTextBox(src *slides.Shape, shapeId string, shapeIdIsMapped bool, batch *slides.BatchUpdatePresentationRequest) {
-	if src.Text == nil {
-		if Verbose {
-			log.Println("skip TEXT_BOX shape without Text (nil)")
-		}
-		return
-	}
-	for _, te := range src.Text.TextElements {
-		if te.AutoText != nil {
-			todo("text box.auto text")
-		}
-		if te.TextRun != nil {
-			insertText := &slides.InsertTextRequest{
-				ObjectId: shapeId,
-				Text:     te.TextRun.Content,
-			}
-			if Verbose {
-				log.Println("textbox:", shapeId, " gets text:", te.TextRun.Content)
-			}
-			batch.Requests = append(batch.Requests, &slides.Request{InsertText: insertText})
-
-			// if the shape is mapped then it is already styled by the layout else we update the styling
-			if !shapeIdIsMapped {
-				if te.TextRun.Style != nil {
-					updateStyle := &slides.UpdateTextStyleRequest{
-						ObjectId: shapeId,
-						Style:    te.TextRun.Style,
-						Fields:   "*",
-					}
-					batch.Requests = append(batch.Requests, &slides.Request{UpdateTextStyle: updateStyle})
-				}
-
-				// TODO find example
-				if te.ParagraphMarker != nil {
-					updateStyle := &slides.UpdateParagraphStyleRequest{
-						ObjectId: shapeId,
-						Style:    te.ParagraphMarker.Style,
-						Fields:   "*",
-					}
-					batch.Requests = append(batch.Requests, &slides.Request{UpdateParagraphStyle: updateStyle})
-				}
-			}
-		}
-	}
 }
