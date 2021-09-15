@@ -18,24 +18,34 @@ Get your OAuth client ID credentials:
 
 ## usage
 
- Create PNG file for each slide in a presentation.
+Commands expect an identifier of a Google slidedeck, such as `1EA.......C6Vuc`.
+Use the flag "-v" for verbose logging.
+
+### thumbnails
+
+Create PNG file for each slide in a presentation.
  
     gslides export thumbnails <source-presentation-id>
 
- Create TXT file with notes from each slide in a presentation.
+### notes
+
+Create TXT file with notes from each slide in a presentation.
     
     gslides export notes <source-presentation-id>
 
+### pdf
 
-## work in progress
+Export a presentation to a PDF formatted file.
+This requires activation of the Drive API in the Google [API library page](https://console.developers.google.com/apis/library).
+
+    gslides export pdf <presentation-id>
+
+## copy (Work in progress)
 
 Add slide numbers *index1* and *index2* from the source presentation to the end of target presentation.
 Slides appended will use the layout styling of the target master.
 
     gslides append <target-presentation-id> <source-presentation-id> index1,index2
 
-Commands expect an identifier of a Google slidedeck, such as `1EA.......C6Vuc`.
-
-Use the flag "-v" for verbose logging.
 
 &copy; 2021+, ernestmicklei.com. MIT License. Contributions welcome.
