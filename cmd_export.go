@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 
 	"github.com/emicklei/tre"
 	"github.com/urfave/cli"
+	"golang.org/x/oauth2/google"
 	"google.golang.org/api/slides/v1"
 )
 
@@ -93,4 +95,32 @@ func exportNotes(slide *slides.Page, filename string) error {
 		}
 	}
 	return nil
+}
+
+func cmdExportPDF(c *cli.Context) error {
+	// If modifying these scopes, delete your previously saved token.json.
+	config, err := google.ConfigFromJSON(readClientID(), "https://www.googleapis.com/auth/drive")
+	if err != nil {
+		log.Fatalf("Unable to parse client secret file to config: %v", err)
+	}
+	client, _ := getClient(config)
+	presentationId := c.Args()[0]
+	get, err := http.NewRequest("GET", fmt.Sprintf("https://www.googleapis.com/drive/v3/files/%s/export?mimeType=application/pdf", presentationId), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(get)
+	if err != nil {
+		return fmt.Errorf("unable to export PDF presentation: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unable to export PDF presentation: %v", resp.Status)
+	}
+	out, err := os.Create("output.pdf")
+	if err != nil {
+		return fmt.Errorf("unable to export PDF presentation: %v", err)
+	}
+	defer out.Close()
+	_, err = io.Copy(out, resp.Body)
+	return err
 }

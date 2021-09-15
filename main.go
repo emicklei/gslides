@@ -54,6 +54,15 @@ func newApp() *cli.App {
 					},
 					ArgsUsage: `export notes <presentation-id>`,
 				},
+				{
+					Name:  "pdf",
+					Usage: "Export a presentation to a PDF file",
+					Action: func(c *cli.Context) error {
+						Verbose = c.GlobalBool("v")
+						return cmdExportPDF(c)
+					},
+					ArgsUsage: `export pdf <presentation-id>`,
+				},
 			},
 		},
 		{
