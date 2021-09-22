@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kortschak/utter"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"google.golang.org/api/slides/v1"
 )
 
@@ -17,22 +17,22 @@ import (
 // target << source[index]
 func cmdAppendSlide(c *cli.Context) error {
 	srv, _ := getSlidesClient()
-	presentationTarget, err := srv.Presentations.Get(c.Args()[0]).Do()
+	presentationTarget, err := srv.Presentations.Get(c.Args().First()).Do()
 	if err != nil {
 		return fmt.Errorf("unable to retrieve data from target presentation: %v", err)
 	}
 	_ = presentationTarget
-	presentationSource, err := srv.Presentations.Get(c.Args()[1]).Do()
+	presentationSource, err := srv.Presentations.Get(c.Args().Get(1)).Do()
 	if err != nil {
 		return fmt.Errorf("unable to retrieve data from source presentation: %v", err)
 	}
 	// accept all or comma list of 1-based indices
 	var indices []int
-	if len(c.Args()) > 1 {
-		if c.Args()[2] == "all" {
+	if c.Args().Len() > 1 {
+		if c.Args().Get(2) == "all" {
 			indices = makeIndices(len(presentationSource.Slides))
 		} else {
-			for _, each := range strings.Split(c.Args()[2], ",") {
+			for _, each := range strings.Split(c.Args().Get(2), ",") {
 				sourceSlideIndex, err := strconv.Atoi(each)
 				if err != nil {
 					return fmt.Errorf("invalid slide presentation index: %v", err)

@@ -11,7 +11,7 @@ import (
 	"os"
 
 	"github.com/emicklei/tre"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/slides/v1"
 )
@@ -22,7 +22,7 @@ type thumbnail struct {
 
 func cmdExportThumbnails(c *cli.Context) error {
 	srv, hc := getSlidesClient()
-	presentationId := c.Args()[0]
+	presentationId := c.Args().First()
 	presentation, err := srv.Presentations.Get(presentationId).Do()
 	if err != nil {
 		return fmt.Errorf("Unable to retrieve data from presentation: %v", err)
@@ -46,7 +46,7 @@ func cmdExportThumbnails(c *cli.Context) error {
 
 func cmdExportNotes(c *cli.Context) error {
 	srv, _ := getSlidesClient()
-	presentationId := c.Args()[0]
+	presentationId := c.Args().First()
 	presentation, err := srv.Presentations.Get(presentationId).Do()
 	if err != nil {
 		return fmt.Errorf("Unable to retrieve data from presentation: %v", err)
@@ -104,21 +104,21 @@ func cmdExportPDF(c *cli.Context) error {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
 	client, _ := getClient(config)
-	presentationId := c.Args()[0]
-	get, err := http.NewRequest("GET", fmt.Sprintf("https://www.googleapis.com/drive/v3/files/%s/export?mimeType=application/pdf", presentationId), nil)
+	documentId := c.Args().First()
+	get, err := http.NewRequest("GET", fmt.Sprintf("https://www.googleapis.com/drive/v3/files/%s/export?mimeType=application/pdf", documentId), nil)
 	if err != nil {
 		return err
 	}
 	resp, err := client.Do(get)
 	if err != nil {
-		return fmt.Errorf("unable to export PDF presentation: %v", err)
+		return fmt.Errorf("unable to export PDF from document: %v", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unable to export PDF presentation: %v", resp.Status)
+		return fmt.Errorf("unable to export PDF from document: %v", resp.Status)
 	}
-	out, err := os.Create("output.pdf")
+	out, err := os.Create(c.String("o"))
 	if err != nil {
-		return fmt.Errorf("unable to export PDF presentation: %v", err)
+		return fmt.Errorf("unable to export PDF from document: %v", err)
 	}
 	defer out.Close()
 	_, err = io.Copy(out, resp.Body)

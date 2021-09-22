@@ -1,7 +1,5 @@
-token.json
-credentials.json
 *.png
 *.txt
-gslides.json
+*.json
 hub.sh
-output.pdf
+*.pdf

@@ -33,19 +33,25 @@ Create TXT file with notes from each slide in a presentation.
     
     gslides export notes <source-presentation-id>
 
+### list
+
+Print the list of presentations with ID and Name.
+
+    gslides list
+
 ### pdf
 
-Export a presentation to a PDF formatted file.
+Export a presentation (or any document) to a PDF formatted file.
 This requires activation of the Drive API in the Google [API library page](https://console.developers.google.com/apis/library).
 
-    gslides export pdf <presentation-id>
+    gslides export pdf -o mydoc.pdf <document-id>
 
-## copy (Work in progress)
+## append (Work in progress)
 
-Add slide numbers *index1* and *index2* from the source presentation to the end of target presentation.
+Add slide numbers *1* and *2* from the source presentation to the end of target presentation. Use *all* to copy every slide. 
 Slides appended will use the layout styling of the target master.
 
-    gslides append <target-presentation-id> <source-presentation-id> index1,index2
+    gslides append <target-presentation-id> <source-presentation-id> 1,2
 
 
 &copy; 2021+, ernestmicklei.com. MIT License. Contributions welcome.

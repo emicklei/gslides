@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"google.golang.org/api/slides/v1"
 )
 
 // go run *.go -v inspect 1q9VqtPPwyGre9-o3uzlu_u7AEJh-jVFlkB02wJfi4EA 13
 func cmdInspect(c *cli.Context) error {
 	srv, _ := getSlidesClient()
-	presentationTarget, err := srv.Presentations.Get(c.Args()[0]).Do()
+	presentationTarget, err := srv.Presentations.Get(c.Args().First()).Do()
 	if err != nil {
 		return fmt.Errorf("unable to retrieve data from target presentation: %v", err)
 	}
-	if len(c.Args()) == 2 {
-		i, err := strconv.Atoi(c.Args()[1])
+	if c.Args().Len() == 2 {
+		i, err := strconv.Atoi(c.Args().Get(1))
 		if err != nil {
 			return fmt.Errorf("unable to convert slide index: %v", err)
 		}
