@@ -35,9 +35,10 @@ Create TXT file with notes from each slide in a presentation.
 
 ### list
 
-Print the list of presentations with ID and Name.
+Print the list of presentations with `<document-id>` and `name`.
 
     gslides list
+    gslides list -owner you@company.com
 
 ### pdf
 

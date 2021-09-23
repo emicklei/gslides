@@ -97,6 +97,16 @@ func newApp() *cli.App {
 				Verbose = c.Bool("v")
 				return cmdList(c)
 			},
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:  "owner",
+					Usage: "filter by owner account",
+				},
+				&cli.StringFlag{
+					Name:  "folder",
+					Usage: "files in other folder than root",
+				},
+			},
 			ArgsUsage: `list <folder>`,
 		},
 	}
