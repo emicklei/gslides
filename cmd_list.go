@@ -44,7 +44,9 @@ func cmdList(c *cli.Context) error {
 		// send it
 		resp, err := client.Do(get)
 		if err != nil {
-			io.Copy(os.Stdout, resp.Body)
+			if resp != nil && resp.Body != nil {
+				io.Copy(os.Stdout, resp.Body)
+			}
 			return fmt.Errorf("unable to list documents: %v", err)
 		}
 		if resp.StatusCode != http.StatusOK {
