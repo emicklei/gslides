@@ -35,7 +35,7 @@ func cmdList(c *cli.Context) error {
 			presentationsOnly = fmt.Sprintf("%s and '%s' in owners", presentationsOnly, owner)
 		}
 		q.Add("q", presentationsOnly)
-		q.Add("fields", "nextPageToken,files(id,name)")
+		q.Add("fields", "nextPageToken,files(id,name,owners)")
 		if len(pageToken) > 0 {
 			q.Add("pageToken", pageToken)
 		}
@@ -64,7 +64,11 @@ func cmdList(c *cli.Context) error {
 		}
 	}
 	for _, each := range docs {
-		fmt.Println(each.ID, " : ", each.Name)
+		if c.IsSet("owner") {
+			fmt.Println(each.ID, " ", each.Name)
+		} else {
+			fmt.Println(each.ID, " ", each.Name, " ", each.Owners[0].EmailAddress)
+		}
 	}
 	return nil
 }
@@ -74,7 +78,11 @@ type DocumentList struct {
 	Files         []Document `json:"files"`
 }
 
+// https://developers.google.com/drive/api/v3/reference/files
 type Document struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Owners []struct {
+		EmailAddress string `json:"emailAddress"`
+	} `json:"owners"`
 }

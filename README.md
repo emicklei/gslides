@@ -40,6 +40,10 @@ Print the list of presentations with `<document-id>` and `name`.
     gslides list
     gslides list -owner you@company.com
 
+The output is has lines of the format (owner is present unless filtered):
+
+    <id>[space]<title>[space]<owner>
+
 ### pdf
 
 Export a presentation (or any document) to a PDF formatted file.
